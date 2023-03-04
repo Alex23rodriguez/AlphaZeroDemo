@@ -2,16 +2,21 @@
 
 # Monte Carlo tree search implementation
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from math import log
 from random import choice
 
 
-class Node(ABCMeta):
-    def __init__(self, state, w: int, n: int, parent: "Node" = None) -> None:
+class Node(ABC):
+    @abstractmethod
+    @staticmethod
+    def get_initial_state():
+        pass
+
+    def __init__(self, state, parent: "Node" = None) -> None:
         self.state = state
-        self.w = w
-        self.n = n
+        self.w = 0
+        self.n = 0
         self.children = []
         self.parent = parent
 
@@ -67,7 +72,11 @@ class Node(ABCMeta):
 
     @abstractmethod
     def get_next_moves(self, state) -> list:
-        """Generate the next possible moves from the given state."""
+        """
+        Generate the next possible moves from the given state.
+        Note that because of the way the 'update' method is defined, next_moves should be from the same player!
+        Therefore, this has to generate every possible move for the opponent, and the move after that.
+        """
         pass
 
     @abstractmethod
@@ -78,6 +87,7 @@ class Node(ABCMeta):
 
 ###
 def simulate(root: "Node", rounds=1000):
+    global N
     for _ in range(rounds):
         N += 1
         # 1. Selection and 2. Expansion
