@@ -4,6 +4,7 @@
 
 from abc import ABCMeta, abstractmethod
 from math import log
+from random import choice
 
 
 class Node(ABCMeta):
@@ -22,7 +23,7 @@ class Node(ABCMeta):
         """
         pass
 
-    def expand(self) -> "Node" | None:
+    def _expand(self) -> "Node" | None:
         if n := self.try_expand():
             self.children.append(n)
         return n
@@ -38,7 +39,7 @@ class Node(ABCMeta):
 
     def select_and_expand(self) -> "Node":
         # check if node creates a child
-        if c := self.expand():
+        if c := self._expand():
             return c
 
         # TODO: what happens when all nodes are explored?
@@ -54,11 +55,39 @@ class Node(ABCMeta):
         global C, N
         return self.w / self.n + C * (log(N) / self.n) ** 0.5
 
+    def play(self) -> int:
+        """Play until the end."""
+        state = self.state
+        while state:
+            moves = self.get_next_moves(state)
+            if not moves:
+                return self.did_win(state)
+            state = choice(moves)
+            curr_p = not curr_p
+
+    @abstractmethod
+    def get_next_moves(self, state) -> list:
+        """Generate the next possible moves from the given state."""
+        pass
+
+    @abstractmethod
+    def _did_win(self, state):
+        """Given a state, returns 1 if starting player won, -1 if lost, 0 if draw."""
+        pass
+
 
 ###
 def simulate(root: "Node", rounds=1000):
-    # 1. Selection
-    root.expand()
+    for _ in range(rounds):
+        N += 1
+        # 1. Selection and 2. Expansion
+        n = root.select_and_expand()
+
+        # 3. Random play
+        w = n.play()
+
+        # backpropagation
+        n.update(w == 1)
 
 
 ### 1. Selection
