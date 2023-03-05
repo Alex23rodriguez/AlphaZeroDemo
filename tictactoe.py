@@ -3,24 +3,24 @@ import numpy as np
 
 
 class TicTacToe:
-    def __init__(self):
-        self.size = 3
+    def __init__(self, size=3):
+        self.size = size
         self.action_space = self.size * self.size
 
     def get_initial_state(self):
-        return np.zeros(self.action_space)
+        return np.zeros((self.size, self.size), np.int8)
 
     def get_valid_moves(self, state):
-        return (state == 0).astype(np.int8)
+        return (state.reshape(-1) == 0).astype(np.uint8)
 
     def get_next_state(self, state, action, player):
-        state[action] = player
+        state.reshape(-1)[action] = player
         return state
 
     def _check_win(self, state, action):
         row = action // self.size
         col = action % self.size
-        goal = self.size * state[action]
+        goal = self.size * state.reshape(-1)[action]
         return (
             state[row, :].sum() == goal
             or state[:, col].sum() == goal
