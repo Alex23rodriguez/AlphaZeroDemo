@@ -8,6 +8,8 @@ Moves = NDArray[Shape["Size"], Int8]
 
 
 class Game(ABC):
+    action_size: int
+
     @abstractmethod
     def __init__(self) -> None:
         pass

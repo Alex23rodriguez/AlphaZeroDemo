@@ -6,7 +6,7 @@ from game import Game, Moves, State
 class TicTacToe(Game):
     def __init__(self, size=3):
         self.size = size
-        self.action_space = self.size * self.size
+        self.action_size = self.size * self.size
 
     def get_initial_state(self) -> State:
         return np.zeros((self.size, self.size), np.int8)

@@ -1,13 +1,16 @@
+from typing import TypedDict
 import numpy as np
 from game import Game, State
 from random import choice
+
+Args = TypedDict("Args", {"C": int, "num_searches": int})
 
 
 class Node:
     def __init__(
         self,
         game: Game,
-        args,
+        args: Args,
         state: State,
         parent: "Node" | None = None,
         action_taken: int | None = None,
@@ -19,7 +22,7 @@ class Node:
         self.action_taken = action_taken
         self.value_sum = 0  # w
         self.visit_count = 0  # n
-        self.children = []
+        self.children: list["Node"] = []
         self.expandable_moves = game.get_valid_moves(state)
 
     def is_fully_expanded(self):
@@ -62,6 +65,7 @@ class Node:
         value, is_terminal = self.game.get_value_and_terminated(
             self.state, self.action_taken
         )
+        # start with opponent
         value = self.game.get_opponent_value(value)
 
         if is_terminal:
@@ -75,6 +79,7 @@ class Node:
             rollout_state = self.game.get_next_state(
                 rollout_state, action, rollout_player
             )
+            # start with opponent
             value, is_terminal = self.game.get_value_and_terminated(
                 rollout_state, action
             )
@@ -84,9 +89,17 @@ class Node:
                 return value
             rollout_player = self.game.get_opponent(rollout_player)
 
+    def backpropagate(self, value):
+        self.value_sum += value
+        self.visit_count += 1
+
+        if self.parent:
+            value = self.game.get_opponent_value(value)
+            self.backpropagate(value)
+
 
 class MCTS:
-    def __init__(self, game: Game, args):
+    def __init__(self, game: Game, args: Args):
         self.game = game
         self.args = args
 
@@ -107,9 +120,13 @@ class MCTS:
             if not is_terminal:
                 # 2. Expansion
                 node = node.expand()
-
                 # 3. Simulation
                 value = node.simulate()
 
             # 4. Backprop
+            node.backpropagate(value)
+
         # return visit counts
+        action_probs = np.array(child.visit_count for child in root.children)
+        action_probs /= np.sum(action_probs)
+        return action_probs
