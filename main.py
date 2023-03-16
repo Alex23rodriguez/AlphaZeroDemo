@@ -5,7 +5,6 @@ player = 1
 state = game.get_initial_state()
 
 while True:
-
     valid_moves = game.get_valid_moves(state)
     print("possible actions: ", [i for i, v in enumerate(valid_moves) if v])
 

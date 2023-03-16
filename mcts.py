@@ -1,4 +1,4 @@
-from numpy import log
+import numpy as np
 from game import Game, State
 from random import choice
 
@@ -23,20 +23,40 @@ class Node:
         self.expandable_moves = game.get_valid_moves(state)
 
     def is_fully_expanded(self):
-        return sum(self.expandable_moves) == 0 and len(self.children) > 0
+        return np.sum(self.expandable_moves) == 0 and len(self.children) > 0
 
-    def select(self):
-        return max((child._get_ucb(), child) for child in self.children)[1]
+    def select(self) -> "Node":
+        return max((self._get_ucb(child), child) for child in self.children)[1]
 
-    def _get_ucb(self):
+    def _get_ucb(self, child: "Node"):
         # ucb formula
-        return self.value_sum / self.visit_count + 2 * (log(self.value_sum))
+        # we want it to be from the perspective of the parent (opponent)
+        # so we pick the child with the lowest q value
+        # therefore, 1 - child's q value
+        q_value = 1 - child.value_sum / child.visit_count
+        return q_value + self.args["C"] * np.sqrt(
+            np.log(self.value_sum) / child.value_sum
+        )
 
-    def expand(self):
-        action = choice([i for i, v in enumerate(self.expandable_moves) if v])
+    def expand(self) -> "Node":
+        action = choice(self.expandable_moves.nonzero()[0])
+        # action = choice([i for i, v in enumerate(self.expandable_moves) if v])
+        # equivalent to the following code
+        # action = np.random.choice(np.where(self.expandable_moves == 1)[0])
         self.expandable_moves[action] = 0
-        self.children.append(Node(self.game, self.args, self.state, self, action))
-        return self.children[-1]
+
+        # we use 1 as player for all nodes!
+        # all nodes will play from "first person perspective"
+        # instead, opponents are handled by the MCTS by changing the state of our child
+        # also makes code valid for 1 player games
+        # see video at 1:19:00
+        child_state = self.state.copy()
+        child_state = self.game.get_next_state(child_state, action, 1)
+        child_state = self.game.change_perspective(child_state, player=-1)
+
+        child = Node(self.game, self.args, child_state, self, action)
+        self.children.append(child)
+        return child
 
     def simulate(self):
         if self.action_taken:
@@ -56,12 +76,18 @@ class MCTS:
             # 1. Selection
             while node.is_fully_expanded():
                 node = node.select()
-            # 2. Expansion
-            if node.children:
+
+            value, is_terminal = self.game.get_value_and_terminated(
+                node.state, node.action_taken
+            )
+            value = self.game.get_opponent_value(value)
+
+            if not is_terminal:
+                # 2. Expansion
                 node = node.expand()
-            else:
-                pass  # TODO backprop
-            # 3. Simulation
-            node.simulate()
+
+                # 3. Simulation
+                node.simulate()
+
             # 4. Backprop
         # return visit counts

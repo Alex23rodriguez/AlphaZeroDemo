@@ -18,6 +18,8 @@ class Game(ABC):
 
     @abstractmethod
     def get_valid_moves(self, state: State) -> Moves:
+        # an array of size action_space with
+        # zeros for impossible moves and 1 for possible moves
         pass
 
     @abstractmethod
@@ -29,9 +31,20 @@ class Game(ABC):
         pass
 
     @abstractmethod
-    def get_value_and_terminated(self, state: State, action: int) -> tuple[int, bool]:
+    def get_value_and_terminated(
+        self, state: State, action: int | None
+    ) -> tuple[int, bool]:
+        # action should only be None for root node (at beginning of search)
         pass
 
     @abstractmethod
     def get_opponent(self, player: int) -> int:
+        pass
+
+    @abstractmethod
+    def get_opponent_value(self, value: int) -> int:
+        pass
+
+    @abstractmethod
+    def change_perspective(self, state: State, player: int) -> State:
         pass

@@ -29,8 +29,10 @@ class TicTacToe(Game):
             or np.flip(state, axis=0).trace() == goal
         )
 
-    def get_value_and_terminated(self, state: State, action: int) -> tuple[int, bool]:
-        if self._check_win(state, action):
+    def get_value_and_terminated(
+        self, state: State, action: int | None
+    ) -> tuple[int, bool]:
+        if action is not None and self._check_win(state, action):
             return 1, True
         if state.all():  # check if all elements are non-zero
             return 0, True
@@ -38,3 +40,9 @@ class TicTacToe(Game):
 
     def get_opponent(self, player: int) -> int:
         return -player
+
+    def get_opponent_value(self, value: int) -> int:
+        return -value
+
+    def change_perspective(self, state: State, player: int) -> State:
+        return state * player
