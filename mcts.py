@@ -1,103 +1,67 @@
-# flake8: noqa
-
-# Monte Carlo tree search implementation
-
-from abc import ABC, abstractmethod
-from math import log
+from numpy import log
+from game import Game, State
 from random import choice
 
 
-class Node(ABC):
-    @abstractmethod
-    @staticmethod
-    def get_initial_state():
-        pass
-
-    def __init__(self, state, parent: "Node" = None) -> None:
+class Node:
+    def __init__(
+        self,
+        game: Game,
+        args,
+        state: State,
+        parent: "Node" | None = None,
+        action_taken: int | None = None,
+    ):
+        self.game = game
+        self.args = args
         self.state = state
-        self.w = 0
-        self.n = 0
-        self.children = []
         self.parent = parent
+        self.action_taken = action_taken
+        self.value_sum = 0  # w
+        self.visit_count = 0  # n
+        self.children = []
+        self.expandable_moves = game.get_valid_moves(state)
 
-    @abstractmethod
-    def _try_expand(self):
-        """
-        Try to expand into a new node.
-        Retuns the new node if successful, or None if unsuccessful.
-        """
-        pass
+    def is_fully_expanded(self):
+        return sum(self.expandable_moves) == 0 and len(self.children) > 0
 
-    def _expand(self) -> "Node" | None:
-        if n := self.try_expand():
-            self.children.append(n)
-        return n
+    def select(self):
+        return max((child._get_ucb(), child) for child in self.children)[1]
 
-    def update(self, won: bool) -> None:
-        self.n += 1
-        self.w += won
-        if self.parent:
-            self.parent.update()
-        else:
-            global N
-            N += 1
+    def _get_ucb(self):
+        # ucb formula
+        return self.value_sum / self.visit_count + 2 * (log(self.value_sum))
 
-    def select_and_expand(self) -> "Node":
-        # check if node creates a child
-        if c := self._expand():
-            return c
+    def expand(self):
+        action = choice([i for i, v in enumerate(self.expandable_moves) if v])
+        self.expandable_moves[action] = 0
+        self.children.append(Node(self.game, self.args, self.state, self, action))
+        return self.children[-1]
 
-        # TODO: what happens when all nodes are explored?
-        if len(self.children) == 0:
-            return self
-
-        if len(self.children) == 1:
-            return self.children[0]
-
-        return max((c._ucb(), c) for c in self.children)[1]
-
-    def _ucb(self) -> float:
-        global C, N
-        return self.w / self.n + C * (log(N) / self.n) ** 0.5
-
-    def play(self) -> int:
-        """Play until the end."""
-        state = self.state
-        while state:
-            moves = self.get_next_moves(state)
-            if not moves:
-                return self.did_win(state)
-            state = choice(moves)
-            curr_p = not curr_p
-
-    @abstractmethod
-    def get_next_moves(self, state) -> list:
-        """
-        Generate the next possible moves from the given state.
-        Note that because of the way the 'update' method is defined, next_moves should be from the same player!
-        Therefore, this has to generate every possible move for the opponent, and the move after that.
-        """
-        pass
-
-    @abstractmethod
-    def _did_win(self, state):
-        """Given a state, returns 1 if starting player won, -1 if lost, 0 if draw."""
-        pass
+    def simulate(self):
+        if self.action_taken:
+            v, t = self.game.get_value_and_terminated(self.state, self.action_taken)
 
 
-###
-def simulate(root: "Node", rounds=1000):
-    global N
-    for _ in range(rounds):
-        N += 1
-        # 1. Selection and 2. Expansion
-        n = root.select_and_expand()
+class MCTS:
+    def __init__(self, game: Game, args):
+        self.game = game
+        self.args = args
 
-        # 3. Random play
-        w = n.play()
+    def search(self, state):
+        root = Node(self.game, self.args, state)
 
-        # backpropagation
-        n.update(w == 1)
-
-
-### 1. Selection
+        for round in range(self.args["num_searches"]):
+            node = root
+            # 1. Selection
+            while node.is_fully_expanded():
+                node = node.select()
+            # 2. Expansion
+            if node.children:
+                node = node.expand()
+            else:
+                pass  # TODO backprop
+            # 3. Simulation
+            node.simulate()
+            # 4. Backprop
+        # return visit counts
